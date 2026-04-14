@@ -1,310 +1,623 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>300.cn AI 改造方案 | 中企动力智能化转型</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'deep-space': '#030307',
+                        'neon-purple': '#a855f7',
+                        'neon-cyan': '#06b6d4',
+                        'neon-pink': '#ec4899',
+                        'glass': 'rgba(255,255,255,0.03)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Inter', 'Noto Sans SC', sans-serif; }
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: #030307;
+            color: #ffffff;
+            overflow-x: hidden;
+            cursor: none;
+        }
+        
+        /* Custom Cursor */
+        .cursor {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #a855f7;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.1s, background 0.1s;
+            mix-blend-mode: difference;
+        }
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            background: #06b6d4;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .cursor.hover {
+            transform: scale(2.5);
+            background: rgba(168, 85, 247, 0.1);
+        }
+        
+        /* WebGL Canvas */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+        
+        /* Gradient Text */
+        .text-gradient {
+            background: linear-gradient(135deg, #a855f7 0%, #06b6d4 50%, #ec4899 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        
+        .text-gradient-cyan {
+            background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .card-hover {
-            transition: all 0.3s ease;
+        
+        /* Glass Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .card-hover:hover {
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(168, 85, 247, 0.3);
             transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+            box-shadow: 0 32px 64px -12px rgba(168, 85, 247, 0.15);
         }
-        .glow {
-            box-shadow: 0 0 60px rgba(102, 126, 234, 0.3);
+        
+        /* Glowing Button */
+        .btn-glow {
+            position: relative;
+            background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
+            overflow: hidden;
+            transition: all 0.3s;
         }
-        .timeline-line {
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        .btn-glow::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(135deg, #a855f7 0%, #06b6d4 50%, #ec4899 100%);
+            border-radius: inherit;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s;
+            filter: blur(12px);
         }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+        .btn-glow:hover::before {
+            opacity: 0.8;
         }
-        .float-anim {
-            animation: float 6s ease-in-out infinite;
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -10px rgba(168, 85, 247, 0.4);
         }
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
+        
+        /* Business Accordion */
+        .biz-item {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .pulse-glow {
-            animation: pulse-glow 3s ease-in-out infinite;
+        .biz-item.active {
+            background: rgba(168, 85, 247, 0.03);
+        }
+        .biz-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .biz-item.active .biz-content {
+            max-height: 600px;
+        }
+        .biz-icon {
+            transition: transform 0.4s;
+        }
+        .biz-item.active .biz-icon {
+            transform: rotate(135deg);
+        }
+        .biz-number {
+            font-size: 8rem;
+            font-weight: 900;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(168, 85, 247, 0.2);
+            position: absolute;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.4s;
+            z-index: 0;
+        }
+        .biz-item:hover .biz-number,
+        .biz-item.active .biz-number {
+            -webkit-text-stroke: 1px rgba(168, 85, 247, 0.5);
+            color: rgba(168, 85, 247, 0.05);
+        }
+        
+        /* Timeline */
+        .timeline-dot {
+            box-shadow: 0 0 0 4px #030307, 0 0 0 6px rgba(168, 85, 247, 0.3);
+        }
+        
+        /* Reveal Animation Classes */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+        
+        /* Marquee */
+        .marquee-track {
+            display: flex;
+            animation: marquee 30s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        /* Noise Texture */
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030307;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(168, 85, 247, 0.5);
+        }
+        
+        /* Gradient Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            pointer-events: none;
+        }
+        
+        /* Comparison bars */
+        .bar-fill {
+            width: 0%;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
+<body>
+    <div class="noise"></div>
+    <div class="cursor hidden md:block"></div>
+    <div class="cursor-dot hidden md:block"></div>
+    <div id="canvas-container"></div>
 
     <!-- Navbar -->
-    <nav class="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center text-white font-bold">AI</div>
-                    <span class="font-bold text-xl tracking-tight">300智能化</span>
+    <nav class="fixed top-0 w-full z-50 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <a href="#" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+                        AI
+                    </div>
+                    <span class="font-bold text-xl tracking-tight">300<span class="text-gradient">Intelligence</span></span>
+                </a>
+                <div class="hidden md:flex items-center gap-8 text-sm font-medium text-white/60">
+                    <a href="#vision" class="hover:text-white transition-colors nav-link">愿景</a>
+                    <a href="#business" class="hover:text-white transition-colors nav-link">业务改造</a>
+                    <a href="#model" class="hover:text-white transition-colors nav-link">商业模式</a>
+                    <a href="#roadmap" class="hover:text-white transition-colors nav-link">实施路线</a>
+                    <a href="#cases" class="hover:text-white transition-colors nav-link">国际对标</a>
                 </div>
-                <div class="hidden md:flex space-x-8 text-sm font-medium text-slate-600">
-                    <a href="#vision" class="hover:text-indigo-600 transition">愿景</a>
-                    <a href="#business" class="hover:text-indigo-600 transition">业务改造</a>
-                    <a href="#model" class="hover:text-indigo-600 transition">商业模式</a>
-                    <a href="#roadmap" class="hover:text-indigo-600 transition">实施路线</a>
-                    <a href="#cases" class="hover:text-indigo-600 transition">国际对标</a>
-                </div>
-                <a href="#contact" class="gradient-bg text-white px-5 py-2 rounded-full text-sm font-medium hover:opacity-90 transition">立即咨询</a>
+                <a href="#contact" class="btn-glow px-6 py-2.5 rounded-full text-sm font-semibold text-white nav-link">
+                    立即咨询
+                </a>
             </div>
         </div>
     </nav>
 
     <!-- Hero -->
-    <section class="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50"></div>
-        <div class="absolute top-20 right-20 w-96 h-96 bg-indigo-400/20 rounded-full blur-3xl pulse-glow"></div>
-        <div class="absolute bottom-20 left-20 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl pulse-glow" style="animation-delay: 1.5s;"></div>
+    <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <div class="orb w-[600px] h-[600px] bg-purple-600/20 -top-40 -left-40"></div>
+        <div class="orb w-[500px] h-[500px] bg-cyan-600/20 bottom-0 right-0"></div>
         
-        <div class="relative z-10 max-w-6xl mx-auto px-4 text-center">
-            <div class="inline-flex items-center px-4 py-2 rounded-full bg-white/60 border border-indigo-100 text-indigo-700 text-sm font-medium mb-8">
-                <span class="w-2 h-2 bg-indigo-600 rounded-full mr-2 animate-pulse"></span>
-                基于国际最前沿 AI 建站与 GTM 自动化趋势
+        <div class="relative z-10 max-w-7xl mx-auto px-6 text-center pt-20">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-sm text-purple-300 mb-8 reveal" id="hero-badge">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                基于国际最前沿 AI 趋势调研的企业级方案
             </div>
-            <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight">
-                让 <span class="gradient-text">300.cn</span> 成为<br>
-                中国中小企业的<br>
-                <span class="text-slate-700">AI 数字化转型基础设施</span>
+            
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-black leading-[1.1] mb-8">
+                <div class="overflow-hidden"><span class="block reveal">让 <span class="text-gradient">300.cn</span></span></div>
+                <div class="overflow-hidden"><span class="block reveal">成为中国中小企业的</span></div>
+                <div class="overflow-hidden"><span class="block reveal text-gradient-cyan">数字化基础设施</span></div>
             </h1>
-            <p class="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-                不是简单的 AI 辅助，而是基因级重构。<br class="hidden md:block">
-                从 2-8 周建站交付，到 10 分钟 AI 生成。<br class="hidden md:block">
-                从人工托管，到 Agent 7×24 自动运营。
+            
+            <p class="text-lg md:text-2xl text-white/50 max-w-3xl mx-auto mb-12 leading-relaxed reveal">
+                从 2-8 周交付的传统服务，进化为 10 分钟 AI 即时生成。<br class="hidden md:block">
+                从人工托管，进化为 Agent 7×24 自动驾驶。
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="#business" class="gradient-bg text-white px-8 py-4 rounded-2xl text-lg font-semibold hover:shadow-xl hover:scale-105 transition glow">
+            
+            <div class="flex flex-col sm:flex-row gap-4 justify-center reveal">
+                <a href="#business" class="btn-glow px-8 py-4 rounded-2xl text-lg font-semibold text-white">
                     查看改造方案
                 </a>
-                <a href="#model" class="bg-white text-slate-700 border-2 border-slate-200 px-8 py-4 rounded-2xl text-lg font-semibold hover:border-indigo-300 hover:text-indigo-700 transition">
+                <a href="#model" class="px-8 py-4 rounded-2xl text-lg font-semibold text-white/80 border border-white/10 hover:border-purple-500/50 hover:bg-white/5 transition-all">
                     商业模式升级
                 </a>
             </div>
-            
-            <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-                <div class="text-center">
-                    <div class="text-4xl font-black gradient-text">20年</div>
-                    <div class="text-slate-500 mt-1">服务积累</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-4xl font-black gradient-text">10分钟</div>
-                    <div class="text-slate-500 mt-1">AI 交付</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-4xl font-black gradient-text">5大</div>
-                    <div class="text-slate-500 mt-1">业务线改造</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-4xl font-black gradient-text">300%</div>
-                    <div class="text-slate-500 mt-1">人效提升</div>
-                </div>
+        </div>
+        
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/30 text-sm animate-bounce">
+            <span class="text-xs tracking-widest uppercase">Scroll</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+    </section>
+
+    <!-- Stats Marquee -->
+    <section class="py-16 border-y border-white/5 overflow-hidden">
+        <div class="marquee-track">
+            <div class="flex gap-16 px-8 items-center text-4xl md:text-6xl font-black text-white/10 whitespace-nowrap">
+                <span class="flex items-center gap-4"><span class="text-gradient counter" data-target="20">0</span> 年行业积累</span>
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                <span class="flex items-center gap-4"><span class="text-gradient-cyan counter" data-target="10">0</span> 分钟 AI 交付</span>
+                <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+                <span class="flex items-center gap-4"><span class="text-gradient counter" data-target="5">0</span> 大业务线改造</span>
+                <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                <span class="flex items-center gap-4"><span class="text-gradient-cyan counter" data-target="300">0</span>% 人效提升</span>
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+            </div>
+            <div class="flex gap-16 px-8 items-center text-4xl md:text-6xl font-black text-white/10 whitespace-nowrap">
+                <span class="flex items-center gap-4"><span class="text-gradient counter" data-target="20">0</span> 年行业积累</span>
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                <span class="flex items-center gap-4"><span class="text-gradient-cyan counter" data-target="10">0</span> 分钟 AI 交付</span>
+                <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+                <span class="flex items-center gap-4"><span class="text-gradient counter" data-target="5">0</span> 大业务线改造</span>
+                <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                <span class="flex items-center gap-4"><span class="text-gradient-cyan counter" data-target="300">0</span>% 人效提升</span>
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
             </div>
         </div>
     </section>
 
     <!-- Vision -->
-    <section id="vision" class="py-24 bg-white">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4">核心判断</h2>
-                <p class="text-xl text-slate-600 max-w-3xl mx-auto">AI 不是颠覆者，而是放大器。中企动力最大的资产是 20 年的行业 know-how，AI 将其放大为无法复制的竞争壁垒。</p>
+    <section id="vision" class="py-32 relative">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <p class="text-purple-400 text-sm font-semibold tracking-widest uppercase mb-4 reveal">Core Judgment</p>
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 reveal">核心判断</h2>
+                <p class="text-xl text-white/40 max-w-3xl mx-auto reveal">
+                    AI 不是颠覆者，而是放大器。中企动力 20 年的行业 know-how 是最大资产，AI 将其放大为无法复制的竞争壁垒。
+                </p>
             </div>
             
             <div class="grid md:grid-cols-3 gap-8">
-                <div class="bg-slate-50 rounded-3xl p-8 card-hover border border-slate-100">
-                    <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 mb-6">
-                        <i data-lucide="zap" class="w-7 h-7"></i>
+                <div class="glass-card rounded-3xl p-8 md:p-10 reveal card-3d">
+                    <div class="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6">
+                        <svg class="w-7 h-7 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </div>
                     <h3 class="text-2xl font-bold mb-3">从服务到生成</h3>
-                    <p class="text-slate-600 leading-relaxed">传统项目制建站变为 AI 即时生成。客户只需输入企业信息，10 分钟内获得带品牌文案、SEO、转化组件的完整数字门户。</p>
+                    <p class="text-white/40 leading-relaxed">
+                        传统项目制建站进化为 AI 即时生成。客户输入企业信息，10 分钟内获得带品牌文案、SEO、转化组件的完整数字门户。
+                    </p>
                 </div>
-                <div class="bg-slate-50 rounded-3xl p-8 card-hover border border-slate-100">
-                    <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6">
-                        <i data-lucide="bot" class="w-7 h-7"></i>
+                <div class="glass-card rounded-3xl p-8 md:p-10 reveal card-3d">
+                    <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6">
+                        <svg class="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                     </div>
                     <h3 class="text-2xl font-bold mb-3">从人工到 Agent</h3>
-                    <p class="text-slate-600 leading-relaxed">SEO、SEM、内容营销、客服、电商运营全部交给 AI Agent 自主运营。从"托管费"变为"效果分成"。</p>
+                    <p class="text-white/40 leading-relaxed">
+                        SEO、SEM、内容营销、客服、电商运营全部交给 AI Agent 自主运营。从收"托管费"进化为按"效果分成"。
+                    </p>
                 </div>
-                <div class="bg-slate-50 rounded-3xl p-8 card-hover border border-slate-100">
-                    <div class="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-pink-600 mb-6">
-                        <i data-lucide="trending-up" class="w-7 h-7"></i>
+                <div class="glass-card rounded-3xl p-8 md:p-10 reveal card-3d">
+                    <div class="w-14 h-14 rounded-2xl bg-pink-500/10 flex items-center justify-center mb-6">
+                        <svg class="w-7 h-7 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                     </div>
                     <h3 class="text-2xl font-bold mb-3">从项目到订阅</h3>
-                    <p class="text-slate-600 leading-relaxed">从一次性收费转为 AI SaaS 订阅+效果分成。客户活跃度和续约率大幅提升，LTV 翻倍。</p>
+                    <p class="text-white/40 leading-relaxed">
+                        从一次性收费转为 AI SaaS 订阅+效果分成。客户活跃度和续约率大幅提升，客户终身价值翻倍。
+                    </p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Business Lines -->
-    <section id="business" class="py-24 bg-slate-900 text-white relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-full opacity-20">
-            <div class="absolute top-10 left-10 w-72 h-72 bg-indigo-500 rounded-full blur-[120px]"></div>
-            <div class="absolute bottom-10 right-10 w-72 h-72 bg-purple-500 rounded-full blur-[120px]"></div>
-        </div>
-        
-        <div class="relative z-10 max-w-7xl mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">五大业务线全面改造</h2>
-                <p class="text-xl text-slate-400">每一条业务线都从"人工驱动"进化为"AI 驱动"</p>
+    <section id="business" class="py-32 relative">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="mb-20">
+                <p class="text-purple-400 text-sm font-semibold tracking-widest uppercase mb-4 reveal">Business Transformation</p>
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 reveal">五大业务线全面改造</h2>
+                <p class="text-xl text-white/40 max-w-3xl reveal">每一条业务线都从"人工驱动"进化为"AI 驱动"</p>
             </div>
             
-            <div class="space-y-6">
-                <!-- Line 1 -->
-                <div class="group bg-slate-800/50 backdrop-blur border border-slate-700 rounded-3xl p-8 hover:bg-slate-800 transition cursor-pointer" onclick="toggleDetail('detail1')">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white font-bold text-xl">01</div>
+            <div class="space-y-0">
+                <!-- Item 1 -->
+                <div class="biz-item py-8 md:py-12 px-4 md:px-8 rounded-2xl relative overflow-hidden cursor-pointer reveal" data-biz="1">
+                    <div class="biz-number">01</div>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 flex items-center justify-center border border-purple-500/20">
+                                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
                             <div>
-                                <h3 class="text-2xl font-bold">建站服务 → AI 数字分身工厂</h3>
-                                <p class="text-slate-400">对标 Wix ADI + Squarespace Blueprint AI</p>
+                                <h3 class="text-2xl md:text-3xl font-bold mb-1">建站服务</h3>
+                                <p class="text-white/40">→ AI 数字分身工厂 | 对标 Wix ADI + Squarespace Blueprint AI</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center gap-8 mt-6 md:mt-0">
                             <div class="text-right">
-                                <div class="text-sm text-slate-500">交付时间</div>
-                                <div class="text-2xl font-bold text-emerald-400">10分钟</div>
+                                <div class="text-sm text-white/30">交付时间</div>
+                                <div class="text-3xl font-black text-gradient">10分钟</div>
                             </div>
-                            <i data-lucide="chevron-down" class="w-6 h-6 text-slate-400"></i>
+                            <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center biz-icon">
+                                <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </div>
                         </div>
                     </div>
-                    <div id="detail1" class="hidden mt-6 pt-6 border-t border-slate-700 text-slate-300 leading-relaxed">
-                        <ul class="grid md:grid-cols-2 gap-4">
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>对话式 AI 建站：输入行业、产品、品牌偏好，自动生成 PC+移动+小程序三端</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>AI 生成品牌文案：About Us、产品页、Contact 等全部自动化</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>自动 SEO 优化：TDK、结构化数据、图片 alt 标签一键生成</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>数字分身服务：为企业主生成个人 IP 站点，集成全网内容</span></li>
-                        </ul>
+                    <div class="biz-content">
+                        <div class="pt-8 pb-4 grid md:grid-cols-2 gap-6 relative z-10">
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">对话式 AI 建站</h4>
+                                    <p class="text-white/40 text-sm">输入行业、产品、品牌偏好，自动生成 PC+移动+小程序三端同步站点</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">AI 生成品牌文案</h4>
+                                    <p class="text-white/40 text-sm">About Us、产品页、Contact 等全部自动化填充</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">自动 SEO 优化</h4>
+                                    <p class="text-white/40 text-sm">TDK、结构化数据、图片 alt 标签一键生成</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">数字分身服务</h4>
+                                    <p class="text-white/40 text-sm">为企业主生成个人 IP 站点，集成全网内容</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Line 2 -->
-                <div class="group bg-slate-800/50 backdrop-blur border border-slate-700 rounded-3xl p-8 hover:bg-slate-800 transition cursor-pointer" onclick="toggleDetail('detail2')">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white font-bold text-xl">02</div>
+                <!-- Item 2 -->
+                <div class="biz-item py-8 md:py-12 px-4 md:px-8 rounded-2xl relative overflow-hidden cursor-pointer reveal" data-biz="2">
+                    <div class="biz-number">02</div>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 flex items-center justify-center border border-cyan-500/20">
+                                <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                            </div>
                             <div>
-                                <h3 class="text-2xl font-bold">网络营销 → AI GTM 自动化中心</h3>
-                                <p class="text-slate-400">对标 HubSpot Breeze + Relevance AI</p>
+                                <h3 class="text-2xl md:text-3xl font-bold mb-1">网络营销</h3>
+                                <p class="text-white/40">→ AI GTM 自动化中心 | 对标 HubSpot Breeze + Relevance AI</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center gap-8 mt-6 md:mt-0">
                             <div class="text-right">
-                                <div class="text-sm text-slate-500">运营方式</div>
-                                <div class="text-2xl font-bold text-emerald-400">Agent 自动驾驶</div>
+                                <div class="text-sm text-white/30">运营方式</div>
+                                <div class="text-3xl font-black text-gradient-cyan">Agent 自动驾驶</div>
                             </div>
-                            <i data-lucide="chevron-down" class="w-6 h-6 text-slate-400"></i>
+                            <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center biz-icon">
+                                <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </div>
                         </div>
                     </div>
-                    <div id="detail2" class="hidden mt-6 pt-6 border-t border-slate-700 text-slate-300 leading-relaxed">
-                        <ul class="grid md:grid-cols-2 gap-4">
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>SEO Agent：自动监控排名、生成文章、修复技术问题</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>SEM Agent：对接百度/巨量 API，自动调价、A/B 测试创意</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>内容营销 Agent：自动生成公众号/抖音/小红书/海外社媒内容</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>付费模式：按有效线索数或 ROI 分成收费</span></li>
-                        </ul>
+                    <div class="biz-content">
+                        <div class="pt-8 pb-4 grid md:grid-cols-2 gap-6 relative z-10">
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">SEO Agent</h4>
+                                    <p class="text-white/40 text-sm">自动监控排名、生成文章、修复技术问题</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">SEM Agent</h4>
+                                    <p class="text-white/40 text-sm">对接百度/巨量 API，自动调价、A/B 测试创意</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">内容营销 Agent</h4>
+                                    <p class="text-white/40 text-sm">自动生成公众号/抖音/小红书/海外社媒内容</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">付费模式</h4>
+                                    <p class="text-white/40 text-sm">按有效线索数或 ROI 分成收费</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Line 3 -->
-                <div class="group bg-slate-800/50 backdrop-blur border border-slate-700 rounded-3xl p-8 hover:bg-slate-800 transition cursor-pointer" onclick="toggleDetail('detail3')">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white font-bold text-xl">03</div>
+                <!-- Item 3 -->
+                <div class="biz-item py-8 md:py-12 px-4 md:px-8 rounded-2xl relative overflow-hidden cursor-pointer reveal" data-biz="3">
+                    <div class="biz-number">03</div>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-600/10 flex items-center justify-center border border-pink-500/20">
+                                <svg class="w-8 h-8 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                            </div>
                             <div>
-                                <h3 class="text-2xl font-bold">域名/主机/邮箱 → AI 商业启动入口</h3>
-                                <p class="text-slate-400">对标 GoDaddy Airo</p>
+                                <h3 class="text-2xl md:text-3xl font-bold mb-1">域名 / 主机 / 邮箱</h3>
+                                <p class="text-white/40">→ AI 商业启动入口 | 对标 GoDaddy Airo</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center gap-8 mt-6 md:mt-0">
                             <div class="text-right">
-                                <div class="text-sm text-slate-500">附赠价值</div>
-                                <div class="text-2xl font-bold text-emerald-400">完整商业体</div>
+                                <div class="text-sm text-white/30">附赠价值</div>
+                                <div class="text-3xl font-black text-gradient">完整商业体</div>
                             </div>
-                            <i data-lucide="chevron-down" class="w-6 h-6 text-slate-400"></i>
+                            <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center biz-icon">
+                                <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </div>
                         </div>
                     </div>
-                    <div id="detail3" class="hidden mt-6 pt-6 border-t border-slate-700 text-slate-300 leading-relaxed">
-                        <ul class="grid md:grid-cols-2 gap-4">
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>买域名送 AI 商业体：Logo、官网、邮箱模板、社媒账号</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>邮箱内置 AI 客服 Agent：自动分类、回复草稿、待办跟进</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>主机升级为 AI 原生云：CDN + AI 安全防护 + 流量分析</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>从"卖资源"变为"卖智能化商业启动包"</span></li>
-                        </ul>
+                    <div class="biz-content">
+                        <div class="pt-8 pb-4 grid md:grid-cols-2 gap-6 relative z-10">
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                <div><h4 class="font-semibold mb-1">买域名送 AI 商业体</h4><p class="text-white/40 text-sm">Logo、官网、邮箱模板、社媒账号一键生成</p></div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                <div><h4 class="font-semibold mb-1">邮箱内置 AI 客服 Agent</h4><p class="text-white/40 text-sm">自动分类邮件、回复草稿、待办跟进</p></div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                <div><h4 class="font-semibold mb-1">AI 原生云</h4><p class="text-white/40 text-sm">CDN + AI 安全防护 + 流量分析</p></div>
+                            </div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]">
+                                <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                                <div><h4 class="font-semibold mb-1">模式升级</h4><p class="text-white/40 text-sm">从卖资源变为卖智能化商业启动包</p></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Line 4 -->
-                <div class="group bg-slate-800/50 backdrop-blur border border-slate-700 rounded-3xl p-8 hover:bg-slate-800 transition cursor-pointer" onclick="toggleDetail('detail4')">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white font-bold text-xl">04</div>
+                <!-- Item 4 -->
+                <div class="biz-item py-8 md:py-12 px-4 md:px-8 rounded-2xl relative overflow-hidden cursor-pointer reveal" data-biz="4">
+                    <div class="biz-number">04</div>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center border border-orange-500/20">
+                                <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                            </div>
                             <div>
-                                <h3 class="text-2xl font-bold">电商平台 → AI 电商运营大脑</h3>
-                                <p class="text-slate-400">对标 Shopify Magic</p>
+                                <h3 class="text-2xl md:text-3xl font-bold mb-1">电商平台</h3>
+                                <p class="text-white/40">→ AI 电商运营大脑 | 对标 Shopify Magic</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center gap-8 mt-6 md:mt-0">
                             <div class="text-right">
-                                <div class="text-sm text-slate-500">运营深度</div>
-                                <div class="text-2xl font-bold text-emerald-400">全链自动化</div>
+                                <div class="text-sm text-white/30">运营深度</div>
+                                <div class="text-3xl font-black text-gradient-cyan">全链自动化</div>
                             </div>
-                            <i data-lucide="chevron-down" class="w-6 h-6 text-slate-400"></i>
+                            <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center biz-icon">
+                                <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </div>
                         </div>
                     </div>
-                    <div id="detail4" class="hidden mt-6 pt-6 border-t border-slate-700 text-slate-300 leading-relaxed">
-                        <ul class="grid md:grid-cols-2 gap-4">
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>AI 一键开店：上传 ERP 对接后自动生成商品页、视频脚本、定价策略</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>AI 运营管家：监控库存、优化广告、回复客服、分析数据</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>跨境专项：文化适配翻译、海外社媒内容、时区客服</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>商业模式：GMV 抽成 1-3%</span></li>
-                        </ul>
+                    <div class="biz-content">
+                        <div class="pt-8 pb-4 grid md:grid-cols-2 gap-6 relative z-10">
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">AI 一键开店</h4><p class="text-white/40 text-sm">上传 ERP 对接后自动生成商品页、视频脚本、定价策略</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">AI 运营管家</h4><p class="text-white/40 text-sm">监控库存、优化广告、回复客服、分析数据</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">跨境专项</h4><p class="text-white/40 text-sm">文化适配翻译、海外社媒内容、时区客服</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">商业模式</h4><p class="text-white/40 text-sm">GMV 抽成 1-3%</p></div></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Line 5 -->
-                <div class="group bg-slate-800/50 backdrop-blur border border-slate-700 rounded-3xl p-8 hover:bg-slate-800 transition cursor-pointer" onclick="toggleDetail('detail5')">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div class="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white font-bold text-xl">05</div>
+                <!-- Item 5 -->
+                <div class="biz-item py-8 md:py-12 px-4 md:px-8 rounded-2xl relative overflow-hidden cursor-pointer reveal" data-biz="5">
+                    <div class="biz-number">05</div>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center border border-emerald-500/20">
+                                <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </div>
                             <div>
-                                <h3 class="text-2xl font-bold">企业数字化 → 企业 AI 员工租赁平台</h3>
-                                <p class="text-slate-400">对标 Relevance AI Workforce</p>
+                                <h3 class="text-2xl md:text-3xl font-bold mb-1">企业数字化</h3>
+                                <p class="text-white/40">→ 企业 AI 员工租赁平台 | 对标 Relevance AI Workforce</p>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-6">
+                        <div class="flex items-center gap-8 mt-6 md:mt-0">
                             <div class="text-right">
-                                <div class="text-sm text-slate-500">服务形态</div>
-                                <div class="text-2xl font-bold text-emerald-400">按人头租赁</div>
+                                <div class="text-sm text-white/30">服务形态</div>
+                                <div class="text-3xl font-black text-gradient">按人头租赁</div>
                             </div>
-                            <i data-lucide="chevron-down" class="w-6 h-6 text-slate-400"></i>
+                            <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center biz-icon">
+                                <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </div>
                         </div>
                     </div>
-                    <div id="detail5" class="hidden mt-6 pt-6 border-t border-slate-700 text-slate-300 leading-relaxed">
-                        <ul class="grid md:grid-cols-2 gap-4">
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>AI-SDR：自动找线索、发开发信、预约会议</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>AI-CS：7×24 接待、处理售后、满意度回访</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>AI-CM：公众号、海报、社媒日历自动生成</span></li>
-                            <li class="flex items-start space-x-2"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0"></i><span>人机协同：1 个真人 + N 个 AI 员工的超级团队</span></li>
-                        </ul>
+                    <div class="biz-content">
+                        <div class="pt-8 pb-4 grid md:grid-cols-2 gap-6 relative z-10">
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">AI-SDR</h4><p class="text-white/40 text-sm">自动找线索、发开发信、预约会议</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">AI-CS</h4><p class="text-white/40 text-sm">7×24 接待、处理售后、满意度回访</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">AI-CM</h4><p class="text-white/40 text-sm">公众号、海报、社媒日历自动生成</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02]"><div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><h4 class="font-semibold mb-1">人机协同</h4><p class="text-white/40 text-sm">1 个真人 + N 个 AI 员工的超级团队</p></div></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -312,191 +625,263 @@
     </section>
 
     <!-- Business Model -->
-    <section id="model" class="py-24 bg-white">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4">商业模式升级</h2>
-                <p class="text-xl text-slate-600">从"项目制"转型为"订阅制+效果分成"</p>
+    <section id="model" class="py-32 relative overflow-hidden">
+        <div class="orb w-[800px] h-[800px] bg-purple-600/10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+        
+        <div class="relative z-10 max-w-7xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <p class="text-purple-400 text-sm font-semibold tracking-widest uppercase mb-4 reveal">Business Model</p>
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 reveal">商业模式升级</h2>
+                <p class="text-xl text-white/40 max-w-3xl mx-auto reveal">从"项目制"转型为"订阅制+效果分成"</p>
             </div>
             
-            <div class="grid md:grid-cols-2 gap-12 items-center">
-                <div class="bg-slate-50 rounded-3xl p-8 border border-slate-200">
-                    <h3 class="text-xl font-bold text-slate-400 mb-6 flex items-center">
-                        <i data-lucide="x-circle" class="w-5 h-5 mr-2"></i>
-                        旧模式
-                    </h3>
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between p-4 bg-white rounded-xl">
-                            <span class="text-slate-600">一次性建站费</span>
-                            <span class="text-2xl font-bold text-slate-400">70%</span>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Old Model -->
+                <div class="glass-card rounded-3xl p-8 md:p-12 reveal">
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </div>
-                        <div class="flex items-center justify-between p-4 bg-white rounded-xl">
-                            <span class="text-slate-600">年度续费/托管费</span>
-                            <span class="text-2xl font-bold text-slate-400">30%</span>
+                        <h3 class="text-2xl font-bold text-white/40">旧模式</h3>
+                    </div>
+                    <div class="space-y-8">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-white/60">一次性建站费</span>
+                                <span class="text-white/40 font-mono">70%</span>
+                            </div>
+                            <div class="h-3 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-white/20 rounded-full bar-fill" data-width="70"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-white/60">年度续费/托管费</span>
+                                <span class="text-white/40 font-mono">30%</span>
+                            </div>
+                            <div class="h-3 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-white/20 rounded-full bar-fill" data-width="30"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-6 text-sm text-slate-500">
-                        问题：交付周期长、毛利率低、客户经活一次性、续约率下滑
+                    <div class="mt-8 pt-8 border-t border-white/5">
+                        <p class="text-white/30 text-sm leading-relaxed">
+                            问题：交付周期长、毛利率低、客户经活一次性、续约率下滑
+                        </p>
                     </div>
                 </div>
-                
-                <div class="gradient-bg rounded-3xl p-8 text-white">
-                    <h3 class="text-xl font-bold mb-6 flex items-center">
-                        <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
-                        新模式
-                    </h3>
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between p-4 bg-white/20 rounded-xl backdrop-blur">
-                            <span>AI SaaS 订阅</span>
-                            <span class="text-2xl font-bold">50%</span>
+
+                <!-- New Model -->
+                <div class="rounded-3xl p-8 md:p-12 bg-gradient-to-br from-purple-600/20 via-purple-900/20 to-cyan-900/20 border border-purple-500/20 reveal">
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         </div>
-                        <div class="flex items-center justify-between p-4 bg-white/20 rounded-xl backdrop-blur">
-                            <span>效果分成 / GMV 抽佣</span>
-                            <span class="text-2xl font-bold">30%</span>
+                        <h3 class="text-2xl font-bold">新模式</h3>
+                    </div>
+                    <div class="space-y-8">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-white/80">AI SaaS 订阅</span>
+                                <span class="text-purple-400 font-mono font-bold">50%</span>
+                            </div>
+                            <div class="h-3 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-purple-500 to-purple-400 rounded-full bar-fill" data-width="50"></div>
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between p-4 bg-white/20 rounded-xl backdrop-blur">
-                            <span>高端定制服务</span>
-                            <span class="text-2xl font-bold">20%</span>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-white/80">效果分成 / GMV 抽佣</span>
+                                <span class="text-cyan-400 font-mono font-bold">30%</span>
+                            </div>
+                            <div class="h-3 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full bar-fill" data-width="30"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-white/80">高端定制服务</span>
+                                <span class="text-pink-400 font-mono font-bold">20%</span>
+                            </div>
+                            <div class="h-3 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-pink-500 to-pink-400 rounded-full bar-fill" data-width="20"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-6 text-sm text-white/90">
-                        优势：高粘性、可扩展、收入可预测、与客户利益绑定
+                    <div class="mt-8 pt-8 border-t border-white/10">
+                        <p class="text-white/60 text-sm leading-relaxed">
+                            优势：高粘性、可扩展、收入可预测、与客户利益绑定
+                        </p>
                     </div>
+                </div>
+            </div>
+            
+            <div class="mt-16 text-center reveal">
+                <div class="inline-flex items-center gap-4 px-8 py-4 rounded-2xl glass-card">
+                    <span class="text-white/40">关键转变</span>
+                    <div class="h-6 w-px bg-white/10"></div>
+                    <span class="text-white font-semibold">从南网站变为南结果，从服务商变为基础设施提供商</span>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Roadmap -->
-    <section id="roadmap" class="py-24 bg-slate-50">
-        <div class="max-w-5xl mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4">实施路线图</h2>
-                <p class="text-xl text-slate-600">18 个月分三阶段推进</p>
+    <section id="roadmap" class="py-32 relative">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <p class="text-purple-400 text-sm font-semibold tracking-widest uppercase mb-4 reveal">Roadmap</p>
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 reveal">实施路线图</h2>
+                <p class="text-xl text-white/40 reveal">18 个月分三阶段推进</p>
             </div>
             
             <div class="relative">
-                <div class="absolute left-8 md:left-1/2 top-0 bottom-0 w-1 timeline-line rounded-full transform md:-translate-x-1/2"></div>
+                <div class="absolute left-8 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-purple-500 via-cyan-500 to-transparent"></div>
                 
                 <!-- Phase 1 -->
-                <div class="relative mb-12 md:flex md:justify-between md:items-center">
-                    <div class="hidden md:block w-5/12 text-right pr-8">
-                        <h3 class="text-2xl font-bold mb-2">Phase 1: MVP 验证</h3>
-                        <p class="text-slate-500">0-6 个月</p>
-                    </div>
-                    <div class="absolute left-8 md:left-1/2 w-16 h-16 gradient-bg rounded-full flex items-center justify-center text-white font-bold text-xl transform -translate-x-1/2 border-4 border-slate-50 z-10">
-                        1
-                    </div>
-                    <div class="pl-20 md:pl-8 md:w-5/12">
-                        <div class="md:hidden mb-2">
-                            <h3 class="text-2xl font-bold">Phase 1: MVP 验证</h3>
-                            <p class="text-slate-500">0-6 个月</p>
+                <div class="relative mb-20 reveal">
+                    <div class="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-purple-500 timeline-dot transform -translate-x-1/2 top-2"></div>
+                    <div class="pl-20 md:pl-0 md:grid md:grid-cols-2 md:gap-16">
+                        <div class="md:text-right md:pr-16">
+                            <div class="inline-block px-4 py-1 rounded-full bg-purple-500/10 text-purple-400 text-sm font-semibold mb-3">Phase 1</div>
+                            <h3 class="text-2xl font-bold mb-2">MVP 验证</h3>
+                            <p class="text-white/40">0-6 个月</p>
                         </div>
-                        <ul class="space-y-2 text-slate-600">
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>上线 AI 建站引擎 MVP，10 个行业模板</li>
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>推出 AI 内容运营助手</li>
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>改造域名购买流程，附赠 AI 站点</li>
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>100 家老客户免费试用</li>
-                        </ul>
+                        <div class="mt-4 md:mt-0 md:pl-16">
+                            <ul class="space-y-3 text-white/60">
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0"></span>
+                                    上线 AI 建站引擎 MVP，10 个行业模板
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0"></span>
+                                    推出 AI 内容运营助手
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0"></span>
+                                    改造域名购买流程，附赠 AI 站点
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0"></span>
+                                    100 家老客户免费试用
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Phase 2 -->
-                <div class="relative mb-12 md:flex md:justify-between md:items-center">
-                    <div class="pl-20 md:pl-0 md:pr-8 md:w-5/12 md:text-right">
-                        <div class="md:hidden mb-2">
-                            <h3 class="text-2xl font-bold">Phase 2: 产品化与商业化</h3>
-                            <p class="text-slate-500">6-12 个月</p>
+                <div class="relative mb-20 reveal">
+                    <div class="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-cyan-500 timeline-dot transform -translate-x-1/2 top-2"></div>
+                    <div class="pl-20 md:pl-0 md:grid md:grid-cols-2 md:gap-16">
+                        <div class="md:text-right md:pr-16 md:order-1 order-2 mt-4 md:mt-0">
+                            <ul class="space-y-3 text-white/60">
+                                <li class="flex items-start gap-3 md:flex-row-reverse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 flex-shrink-0"></span>
+                                    AI 建站引擎全面开放
+                                </li>
+                                <li class="flex items-start gap-3 md:flex-row-reverse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 flex-shrink-0"></span>
+                                    上线 AI-SEO 和 AI-SEM Agent
+                                </li>
+                                <li class="flex items-start gap-3 md:flex-row-reverse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 flex-shrink-0"></span>
+                                    推出首个 AI 数字员工（客服）
+                                </li>
+                                <li class="flex items-start gap-3 md:flex-row-reverse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 flex-shrink-0"></span>
+                                    签约首批效果付费客户
+                                </li>
+                            </ul>
                         </div>
-                        <ul class="space-y-2 text-slate-600">
-                            <li class="flex items-start md:flex-row-reverse"><i data-lucide="check" class="w-5 h-5 text-indigo-600 md:ml-2 md:mr-0 mr-2 mt-0.5"></i>AI 建站引擎全面开放</li>
-                            <li class="flex items-start md:flex-row-reverse"><i data-lucide="check" class="w-5 h-5 text-indigo-600 md:ml-2 md:mr-0 mr-2 mt-0.5"></i>上线 AI-SEO 和 AI-SEM Agent</li>
-                            <li class="flex items-start md:flex-row-reverse"><i data-lucide="check" class="w-5 h-5 text-indigo-600 md:ml-2 md:mr-0 mr-2 mt-0.5"></i>推出首个 AI 数字员工（客服）</li>
-                            <li class="flex items-start md:flex-row-reverse"><i data-lucide="check" class="w-5 h-5 text-indigo-600 md:ml-2 md:mr-0 mr-2 mt-0.5"></i>签约首批效果付费客户</li>
-                        </ul>
-                    </div>
-                    <div class="absolute left-8 md:left-1/2 w-16 h-16 gradient-bg rounded-full flex items-center justify-center text-white font-bold text-xl transform -translate-x-1/2 border-4 border-slate-50 z-10">
-                        2
-                    </div>
-                    <div class="hidden md:block w-5/12 pl-8">
-                        <h3 class="text-2xl font-bold mb-2">Phase 2: 产品化与商业化</h3>
-                        <p class="text-slate-500">6-12 个月</p>
+                        <div class="md:pl-16 md:order-2 order-1">
+                            <div class="inline-block px-4 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-sm font-semibold mb-3">Phase 2</div>
+                            <h3 class="text-2xl font-bold mb-2">产品化与商业化</h3>
+                            <p class="text-white/40">6-12 个月</p>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Phase 3 -->
-                <div class="relative md:flex md:justify-between md:items-center">
-                    <div class="hidden md:block w-5/12 text-right pr-8">
-                        <h3 class="text-2xl font-bold mb-2">Phase 3: 规模扩张</h3>
-                        <p class="text-slate-500">12-18 个月</p>
-                    </div>
-                    <div class="absolute left-8 md:left-1/2 w-16 h-16 gradient-bg rounded-full flex items-center justify-center text-white font-bold text-xl transform -translate-x-1/2 border-4 border-slate-50 z-10">
-                        3
-                    </div>
-                    <div class="pl-20 md:pl-8 md:w-5/12">
-                        <div class="md:hidden mb-2">
-                            <h3 class="text-2xl font-bold">Phase 3: 规模扩张</h3>
-                            <p class="text-slate-500">12-18 个月</p>
+                <div class="relative reveal">
+                    <div class="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-pink-500 timeline-dot transform -translate-x-1/2 top-2"></div>
+                    <div class="pl-20 md:pl-0 md:grid md:grid-cols-2 md:gap-16">
+                        <div class="md:text-right md:pr-16">
+                            <div class="inline-block px-4 py-1 rounded-full bg-pink-500/10 text-pink-400 text-sm font-semibold mb-3">Phase 3</div>
+                            <h3 class="text-2xl font-bold mb-2">规模扩张</h3>
+                            <p class="text-white/40">12-18 个月</p>
                         </div>
-                        <ul class="space-y-2 text-slate-600">
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>完整 AI 数字员工矩阵上线</li>
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>AI 电商运营大脑接入主流平台</li>
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>启动 300 AI 合作伙伴计划</li>
-                            <li class="flex items-start"><i data-lucide="check" class="w-5 h-5 text-indigo-600 mr-2 mt-0.5"></i>启动融资/上市争取</li>
-                        </ul>
+                        <div class="mt-4 md:mt-0 md:pl-16">
+                            <ul class="space-y-3 text-white/60">
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400 mt-2 flex-shrink-0"></span>
+                                    完整 AI 数字员工矩阵上线（5 大岗位）
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400 mt-2 flex-shrink-0"></span>
+                                    AI 电商运营大脑接入主流平台
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400 mt-2 flex-shrink-0"></span>
+                                    启动 300 AI 合作伙伴计划
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400 mt-2 flex-shrink-0"></span>
+                                    启动融资/上市争取
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Cases -->
-    <section id="cases" class="py-24 bg-white">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-bold mb-4">国际前沿对标</h2>
-                <p class="text-xl text-slate-600">从工具到 Agent Workforce 的进化</p>
+    <!-- International Cases -->
+    <section id="cases" class="py-32 relative">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <p class="text-purple-400 text-sm font-semibold tracking-widest uppercase mb-4 reveal">Global Benchmarks</p>
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 reveal">国际前沿对标</h2>
+                <p class="text-xl text-white/40 reveal">从工具到 Agent Workforce 的进化</p>
             </div>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:shadow-lg transition">
-                    <div class="text-2xl font-black gradient-text mb-2">Wix ADI</div>
-                    <p class="text-sm text-slate-500 mb-3">美国</p>
-                    <p class="text-slate-700">对话 3 分钟生成完整网站，AI 自动填充文案、图片、SEO。</p>
+                <div class="glass-card rounded-2xl p-6 reveal case-card">
+                    <div class="text-3xl font-black text-gradient mb-2">Wix</div>
+                    <p class="text-xs text-white/30 uppercase tracking-wider mb-4">USA</p>
+                    <p class="text-white/50 text-sm leading-relaxed">对话 3 分钟生成完整网站，AI 自动填充文案、图片、SEO。建站从服务变为生成。</p>
                 </div>
-                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:shadow-lg transition">
-                    <div class="text-2xl font-black gradient-text mb-2">Squarespace</div>
-                    <p class="text-sm text-slate-500 mb-3">美国</p>
-                    <p class="text-slate-700">Blueprint AI 入选 TIME 2025 最佳发明，57 个设计变量生成品牌站点。</p>
+                <div class="glass-card rounded-2xl p-6 reveal case-card">
+                    <div class="text-3xl font-black text-gradient-cyan mb-2">Squarespace</div>
+                    <p class="text-xs text-white/30 uppercase tracking-wider mb-4">USA</p>
+                    <p class="text-white/50 text-sm leading-relaxed">Blueprint AI 入选 TIME 2025 最佳发明，基于 20 年设计数据训练生成品牌站点。</p>
                 </div>
-                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:shadow-lg transition">
-                    <div class="text-2xl font-black gradient-text mb-2">HubSpot Breeze</div>
-                    <p class="text-sm text-slate-500 mb-3">美国</p>
-                    <p class="text-slate-700">营销、销售、客服全链路 Agent 自动化，Prospecting Agent 自动找线索、发邮件。</p>
+                <div class="glass-card rounded-2xl p-6 reveal case-card">
+                    <div class="text-3xl font-black text-gradient mb-2">HubSpot</div>
+                    <p class="text-xs text-white/30 uppercase tracking-wider mb-4">USA</p>
+                    <p class="text-white/50 text-sm leading-relaxed">Breeze 平台将 Prospecting Agent、Customer Agent 深度集成到 CRM 和营销流程。</p>
                 </div>
-                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:shadow-lg transition">
-                    <div class="text-2xl font-black gradient-text mb-2">Relevance AI</div>
-                    <p class="text-sm text-slate-500 mb-3">澳洲</p>
-                    <p class="text-slate-700">构建"AI Workforce"，从辅助到自动驾驶 L1-L4，替代 SDR 和客户成功。</p>
+                <div class="glass-card rounded-2xl p-6 reveal case-card">
+                    <div class="text-3xl font-black text-gradient-cyan mb-2">Relevance</div>
+                    <p class="text-xs text-white/30 uppercase tracking-wider mb-4">Australia</p>
+                    <p class="text-white/50 text-sm leading-relaxed">构建"AI Workforce"，从辅助 L1 到自动驾驶 L4，替代 SDR 和客户成功团队。</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- CTA -->
-    <section id="contact" class="py-24 gradient-bg text-white relative overflow-hidden">
-        <div class="absolute inset-0 opacity-20">
-            <div class="absolute top-0 left-1/4 w-96 h-96 bg-white rounded-full blur-[100px]"></div>
-            <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-white rounded-full blur-[100px]"></div>
-        </div>
-        <div class="relative z-10 max-w-4xl mx-auto px-4 text-center">
-            <h2 class="text-4xl md:text-5xl font-bold mb-6">准备好进行基因级重构了吗？</h2>
-            <p class="text-xl text-white/90 mb-10">这不是一次技术升级，而是从"传统数字化服务商"进化为"AI 基础设施"的历史性机会。</p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="mailto:kevph@kevph.dev" class="bg-white text-indigo-600 px-8 py-4 rounded-2xl text-lg font-semibold hover:shadow-xl transition">
+    <section id="contact" class="py-32 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-transparent to-transparent"></div>
+        <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
+            <h2 class="text-4xl md:text-6xl font-bold mb-6 reveal">准备好进行<br><span class="text-gradient">基因级重构</span>了吗？</h2>
+            <p class="text-xl text-white/40 mb-12 reveal">这不是一次技术升级，而是从"传统数字化服务商"进化为"AI 基础设施"的历史性机会。</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center reveal">
+                <a href="mailto:kevph@kevph.dev" class="btn-glow px-10 py-5 rounded-2xl text-lg font-semibold text-white">
                     获取完整方案
                 </a>
-                <button onclick="alert('请发送邮件至 kevph@kevph.dev 获取详细报告')" class="bg-white/20 text-white border-2 border-white/40 px-8 py-4 rounded-2xl text-lg font-semibold hover:bg-white/30 transition">
+                <button onclick="alert('请发送邮件至 kevph@kevph.dev 预约演示')" class="px-10 py-5 rounded-2xl text-lg font-semibold text-white/80 border border-white/10 hover:border-purple-500/50 hover:bg-white/5 transition-all">
                     预约演示
                 </button>
             </div>
@@ -504,32 +889,218 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
-        <div class="max-w-7xl mx-auto px-4 text-center">
-            <p class="mb-2">© 2026 300.cn AI 转型方案 | 基于国际最前沿趋势调研</p>
-            <p class="text-sm text-slate-500">由 AI 协助生成 | 仅供策略参考</p>
+    <footer class="py-12 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center font-bold text-sm">AI</div>
+                <span class="font-bold text-lg">300<span class="text-gradient">Intelligence</span></span>
+            </div>
+            <p class="text-white/20 text-sm">© 2026 300.cn AI 转型方案 | 基于国际最前沿趋势调研 | 由 AI 协助生成</p>
         </div>
     </footer>
 
     <script>
-        lucide.createIcons();
+        // ========================================
+        // Custom Cursor
+        // ========================================
+        const cursor = document.querySelector('.cursor');
+        const cursorDot = document.querySelector('.cursor-dot');
         
-        function toggleDetail(id) {
-            const el = document.getElementById(id);
-            if (el.classList.contains('hidden')) {
-                el.classList.remove('hidden');
-            } else {
-                el.classList.add('hidden');
+        document.addEventListener('mousemove', (e) => {
+            if (cursor) {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
             }
+            if (cursorDot) {
+                cursorDot.style.left = e.clientX + 'px';
+                cursorDot.style.top = e.clientY + 'px';
+            }
+        });
+        
+        document.querySelectorAll('a, button, .biz-item, .glass-card').forEach(el => {
+            el.addEventListener('mouseenter', () => cursor && cursor.classList.add('hover'));
+            el.addEventListener('mouseleave', () => cursor && cursor.classList.remove('hover'));
+        });
+
+        // ========================================
+        // Three.js Particle Background
+        // ========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 800;
+        const posArray = new Float32Array(particlesCount * 3);
+        
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 10;
         }
         
-        // Smooth scroll
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.015,
+            color: 0xa855f7,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+        
+        // Lines between particles
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0x06b6d4,
+            transparent: true,
+            opacity: 0.05
+        });
+        
+        camera.position.z = 3;
+        
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            particlesMesh.rotation.x += 0.0003;
+            particlesMesh.rotation.y += 0.0005;
+            
+            particlesMesh.rotation.x += mouseY * 0.0005;
+            particlesMesh.rotation.y += mouseX * 0.0005;
+            
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ========================================
+        // GSAP Animations
+        // ========================================
+        gsap.registerPlugin(ScrollTrigger);
+        
+        // Hero animations
+        gsap.to('#hero-badge', { opacity: 1, y: 0, duration: 1, delay: 0.2 });
+        gsap.utils.toArray('.reveal').forEach((el, i) => {
+            if (!el.classList.contains('block')) {
+                gsap.to(el, {
+                    scrollTrigger: {
+                        trigger: el,
+                        start: 'top 85%',
+                        toggleActions: 'play none none reverse'
+                    },
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.8,
+                    ease: 'power3.out'
                 });
+            }
+        });
+        
+        // Counter animation
+        const counters = document.querySelectorAll('.counter');
+        counters.forEach(counter => {
+            const target = parseInt(counter.dataset.target);
+            gsap.to(counter, {
+                scrollTrigger: {
+                    trigger: counter,
+                    start: 'top 90%'
+                },
+                innerHTML: target,
+                duration: 2,
+                snap: { innerHTML: 1 },
+                ease: 'power2.out'
+            });
+        });
+        
+        // Bar fill animation
+        const bars = document.querySelectorAll('.bar-fill');
+        bars.forEach(bar => {
+            const width = bar.dataset.width;
+            gsap.to(bar, {
+                scrollTrigger: {
+                    trigger: bar,
+                    start: 'top 85%'
+                },
+                width: width + '%',
+                duration: 1.5,
+                ease: 'power3.out'
+            });
+        });
+        
+        // Case cards stagger
+        gsap.from('.case-card', {
+            scrollTrigger: {
+                trigger: '#cases',
+                start: 'top 70%'
+            },
+            y: 60,
+            opacity: 0,
+            duration: 0.8,
+            stagger: 0.1,
+            ease: 'power3.out'
+        });
+        
+        // Navbar scroll effect
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('bg-deep-space/80', 'backdrop-blur-xl', 'border-b', 'border-white/5');
+            } else {
+                navbar.classList.remove('bg-deep-space/80', 'backdrop-blur-xl', 'border-b', 'border-white/5');
+            }
+        });
+
+        // ========================================
+        // Business Accordion
+        // ========================================
+        document.querySelectorAll('.biz-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+                document.querySelectorAll('.biz-item').forEach(i => i.classList.remove('active'));
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+        
+        // Auto-open first item
+        document.querySelector('.biz-item').classList.add('active');
+
+        // ========================================
+        // 3D Tilt Effect for Cards
+        // ========================================
+        document.querySelectorAll('.card-3d').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 20;
+                const rotateY = (centerX - x) / 20;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px)`;
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)';
             });
         });
     </script>
